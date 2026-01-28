@@ -2,6 +2,7 @@ import { Home, Search, Bell, User, Settings, LogOut, Cloud } from "lucide-react"
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: Home, label: "หน้าแรก", path: "/" },
@@ -13,6 +14,11 @@ const navItems = [
 
 export function DesktopSidebar() {
   const location = useLocation();
+  const { profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-border bg-card p-4 md:flex lg:w-72">
@@ -59,7 +65,35 @@ export function DesktopSidebar() {
 
       {/* User Section */}
       <div className="mt-auto border-t border-border pt-4">
-        <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        {profile && (
+          <div className="mb-3 flex items-center gap-3 px-4 py-2">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name || "Avatar"}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                {(profile.display_name || "ผู้ใช้").charAt(0)}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-foreground">
+                {profile.display_name || "ผู้ใช้"}
+              </p>
+              {profile.username && (
+                <p className="truncate text-sm text-muted-foreground">
+                  @{profile.username}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <button 
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">ออกจากระบบ</span>
         </button>
