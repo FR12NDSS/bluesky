@@ -3,8 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 
-const navItems = [
+const baseNavItems = [
   { icon: Home, label: "หน้าแรก", path: "/" },
   { icon: Search, label: "ค้นหา", path: "/search" },
   { icon: Bell, label: "แจ้งเตือน", path: "/notifications" },
@@ -15,6 +16,7 @@ const navItems = [
 export function DesktopSidebar() {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const handleSignOut = async () => {
     await signOut();
@@ -32,9 +34,10 @@ export function DesktopSidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-2">
-        {navItems.map((item) => {
+        {baseNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
+          const showBadge = item.path === "/notifications" && unreadCount > 0;
 
           return (
             <Link
@@ -47,7 +50,14 @@ export function DesktopSidebar() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon className={cn("h-6 w-6", isActive && "text-primary")} />
+              <div className="relative">
+                <Icon className={cn("h-6 w-6", isActive && "text-primary")} />
+                {showBadge && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
               <span>{item.label}</span>
             </Link>
           );
