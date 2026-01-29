@@ -1,41 +1,99 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
-import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import { FollowButton } from "@/components/profile/FollowButton";
 import { FollowListDialog } from "@/components/profile/FollowListDialog";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
-const Profile = () => {
-  const { user, profile, loading } = useAuth();
+interface Profile {
+  id: string;
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  bio: string | null;
+  created_at: string;
+}
+
+const UserProfile = () => {
+  const { userId } = useParams<{ userId: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
 
-  const { followersCount, followingCount } = useFollow(user?.id);
+  const {
+    followersCount,
+    followingCount,
+    isFollowing,
+    actionLoading,
+    toggleFollow,
+  } = useFollow(userId);
+
+  // If viewing own profile, redirect to /profile
+  useEffect(() => {
+    if (user && userId === user.id) {
+      navigate("/profile", { replace: true });
+    }
+  }, [user, userId, navigate]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
-  }, [user, loading, navigate]);
+    const fetchProfile = async () => {
+      if (!userId) return;
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (error) throw error;
+        setProfile(data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!user || !profile) {
-    return null;
+  if (!profile) {
+    return (
+      <MainLayout showRightSidebar={false}>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-4 text-6xl">😕</div>
+          <h2 className="mb-2 text-xl font-bold text-foreground">
+            ไม่พบผู้ใช้นี้
+          </h2>
+          <p className="mb-4 text-muted-foreground">
+            ผู้ใช้นี้อาจถูกลบหรือไม่มีอยู่
+          </p>
+          <Button onClick={() => navigate(-1)}>ย้อนกลับ</Button>
+        </div>
+      </MainLayout>
+    );
   }
 
   const joinedDate = profile.created_at
@@ -90,16 +148,16 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Edit Button */}
-        <div className="absolute right-4 top-4">
-          <Button
-            variant="outline"
-            className="rounded-full font-semibold"
-            onClick={() => setIsEditDialogOpen(true)}
-          >
-            แก้ไขโปรไฟล์
-          </Button>
-        </div>
+        {/* Follow Button */}
+        {user && (
+          <div className="absolute right-4 top-4">
+            <FollowButton
+              isFollowing={isFollowing}
+              loading={actionLoading}
+              onClick={toggleFollow}
+            />
+          </div>
+        )}
 
         {/* Name & Handle */}
         <div className="mb-3">
@@ -173,7 +231,7 @@ const Profile = () => {
               ยังไม่มีโพสต์
             </h3>
             <p className="text-muted-foreground">
-              เริ่มโพสต์เพื่อแชร์ความคิดของคุณ
+              ผู้ใช้นี้ยังไม่ได้โพสต์อะไร
             </p>
           </div>
         </TabsContent>
@@ -185,7 +243,7 @@ const Profile = () => {
               ยังไม่มีการตอบกลับ
             </h3>
             <p className="text-muted-foreground">
-              ร่วมสนทนากับคนอื่นๆ
+              ผู้ใช้นี้ยังไม่ได้ตอบกลับอะไร
             </p>
           </div>
         </TabsContent>
@@ -197,39 +255,29 @@ const Profile = () => {
               ยังไม่มีโพสต์ที่ถูกใจ
             </h3>
             <p className="text-muted-foreground">
-              กดถูกใจโพสต์ที่คุณชอบ
+              ผู้ใช้นี้ยังไม่ได้ถูกใจโพสต์ใดๆ
             </p>
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Edit Profile Dialog */}
-      <EditProfileDialog
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-      />
-
       {/* Follow Dialogs */}
-      {user && (
-        <>
-          <FollowListDialog
-            open={followersDialogOpen}
-            onOpenChange={setFollowersDialogOpen}
-            userId={user.id}
-            type="followers"
-            title="ผู้ติดตาม"
-          />
-          <FollowListDialog
-            open={followingDialogOpen}
-            onOpenChange={setFollowingDialogOpen}
-            userId={user.id}
-            type="following"
-            title="กำลังติดตาม"
-          />
-        </>
-      )}
+      <FollowListDialog
+        open={followersDialogOpen}
+        onOpenChange={setFollowersDialogOpen}
+        userId={userId!}
+        type="followers"
+        title="ผู้ติดตาม"
+      />
+      <FollowListDialog
+        open={followingDialogOpen}
+        onOpenChange={setFollowingDialogOpen}
+        userId={userId!}
+        type="following"
+        title="กำลังติดตาม"
+      />
     </MainLayout>
   );
 };
 
-export default Profile;
+export default UserProfile;
