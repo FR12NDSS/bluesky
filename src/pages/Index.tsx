@@ -1,72 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
 import { ComposePost } from "@/components/post";
 import { PostCard } from "@/components/post";
 import { useAuth } from "@/hooks/useAuth";
+import { usePosts } from "@/hooks/usePosts";
 import { Loader2 } from "lucide-react";
-
-// Mock data for demonstration
-const mockPosts = [
-  {
-    id: "1",
-    author: {
-      name: "สมชาย ใจดี",
-      handle: "@somchai",
-      avatar: null,
-    },
-    content: "วันนี้อากาศดีมาก ออกไปเดินเล่นที่สวนลุมพินีมา สบายใจสุดๆ 🌤️ #กรุงเทพ #สวนลุมพินี",
-    image: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-    likes: 24,
-    comments: 5,
-    reposts: 3,
-    isLiked: false,
-    isReposted: false,
-  },
-  {
-    id: "2",
-    author: {
-      name: "มาลี รักษ์โลก",
-      handle: "@malee_eco",
-      avatar: null,
-    },
-    content: "เพิ่งอ่านบทความเรื่องการลดขยะพลาสติกมา น่าสนใจมากค่ะ เราทุกคนสามารถช่วยกันได้ง่ายๆ เริ่มจากการพกถุงผ้าไปซื้อของ 🌱♻️\n\nใครมีเทคนิคลดขยะดีๆ มาแชร์กันค่ะ!",
-    image: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    likes: 156,
-    comments: 32,
-    reposts: 45,
-    isLiked: true,
-    isReposted: false,
-  },
-  {
-    id: "3",
-    author: {
-      name: "วิทยา เทคโน",
-      handle: "@wittaya_tech",
-      avatar: null,
-    },
-    content: "ทดลองใช้ AI ช่วยเขียนโค้ดมาหลายวัน ต้องบอกว่าประทับใจมาก productivity เพิ่มขึ้นเยอะเลย 🚀\n\n#AI #Programming #Developer",
-    image: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    likes: 89,
-    comments: 21,
-    reposts: 12,
-    isLiked: false,
-    isReposted: true,
-  },
-];
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { posts, loading: postsLoading, createPost, deletePost, toggleLike, toggleRepost } = usePosts();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"forYou" | "following">("forYou");
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
+
+  const handleSubmit = async (content: string, image?: File | null) => {
+    setIsSubmitting(true);
+    await createPost(content, image);
+    setIsSubmitting(false);
+  };
 
   if (loading) {
     return (
@@ -90,14 +48,27 @@ const Index = () => {
         
         {/* Tab Navigation */}
         <div className="flex border-b border-border">
-          <button className="flex-1 py-3 text-center font-medium text-primary transition-colors hover:bg-muted">
+          <button 
+            onClick={() => setActiveTab("forYou")}
+            className="flex-1 py-3 text-center font-medium text-primary transition-colors hover:bg-muted"
+          >
             <span className="relative">
               สำหรับคุณ
-              <span className="absolute -bottom-3 left-0 right-0 h-1 rounded-full bg-primary" />
+              {activeTab === "forYou" && (
+                <span className="absolute -bottom-3 left-0 right-0 h-1 rounded-full bg-primary" />
+              )}
             </span>
           </button>
-          <button className="flex-1 py-3 text-center font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            กำลังติดตาม
+          <button 
+            onClick={() => setActiveTab("following")}
+            className="flex-1 py-3 text-center font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <span className="relative">
+              กำลังติดตาม
+              {activeTab === "following" && (
+                <span className="absolute -bottom-3 left-0 right-0 h-1 rounded-full bg-primary" />
+              )}
+            </span>
           </button>
         </div>
       </header>
@@ -106,23 +77,50 @@ const Index = () => {
       <ComposePost
         userName={profile?.display_name || "ผู้ใช้"}
         avatar={profile?.avatar_url}
-        onSubmit={(content, image) => {
-          console.log("New post:", content, image);
-        }}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
       />
 
       {/* Feed */}
       <div>
-        {mockPosts.map((post) => (
-          <PostCard
-            key={post.id}
-            {...post}
-            onLike={() => console.log("Like:", post.id)}
-            onComment={() => console.log("Comment:", post.id)}
-            onRepost={() => console.log("Repost:", post.id)}
-            onShare={() => console.log("Share:", post.id)}
-          />
-        ))}
+        {postsLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : posts.length > 0 ? (
+          posts.map((post) => (
+            <PostCard
+              key={post.id}
+              id={post.id}
+              author={{
+                name: post.author?.display_name || "ผู้ใช้",
+                handle: `@${post.author?.username || "user"}`,
+                avatar: post.author?.avatar_url,
+              }}
+              content={post.content}
+              image={post.image_url}
+              createdAt={new Date(post.created_at)}
+              likes={post.likes_count}
+              comments={post.comments_count}
+              reposts={post.reposts_count}
+              isLiked={post.is_liked}
+              isReposted={post.is_reposted}
+              isOwner={post.user_id === user?.id}
+              onLike={() => toggleLike(post.id)}
+              onComment={() => console.log("Comment:", post.id)}
+              onRepost={() => toggleRepost(post.id)}
+              onShare={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+              }}
+              onDelete={() => deletePost(post.id)}
+            />
+          ))
+        ) : (
+          <div className="py-12 text-center">
+            <p className="text-muted-foreground">ยังไม่มีโพสต์</p>
+            <p className="text-sm text-muted-foreground mt-1">เริ่มโพสต์เพื่อแชร์ความคิดของคุณ!</p>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
