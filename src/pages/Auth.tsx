@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { z } from "zod";
+import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+import { checkPasswordBreach } from "@/lib/password-strength";
 
 // Validation schemas
 const emailSchema = z.string().email("กรุณากรอกอีเมลที่ถูกต้อง");
@@ -22,6 +24,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
+  const [isBreached, setIsBreached] = useState(false);
+  const [checkingBreach, setCheckingBreach] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,6 +49,27 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Check password breach when password changes (debounced)
+  const checkBreach = useCallback(async (pwd: string) => {
+    if (pwd.length < 6) {
+      setIsBreached(false);
+      return;
+    }
+    setCheckingBreach(true);
+    const breached = await checkPasswordBreach(pwd);
+    setIsBreached(breached);
+    setCheckingBreach(false);
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (password.length >= 6) {
+        checkBreach(password);
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [password, checkBreach]);
+
   const validateForm = (isSignUp: boolean) => {
     const newErrors: { email?: string; password?: string; displayName?: string } = {};
 
@@ -62,6 +87,11 @@ export default function Auth() {
       const displayNameResult = displayNameSchema.safeParse(displayName);
       if (!displayNameResult.success) {
         newErrors.displayName = displayNameResult.error.errors[0].message;
+      }
+      
+      // Block breached passwords on signup
+      if (isBreached) {
+        newErrors.password = "รหัสผ่านนี้เคยรั่วไหล กรุณาใช้รหัสผ่านอื่น";
       }
     }
 
@@ -165,6 +195,7 @@ export default function Auth() {
 
   const clearErrors = () => {
     setErrors({});
+    setIsBreached(false);
   };
 
   return (
@@ -307,6 +338,11 @@ export default function Auth() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    <PasswordStrengthMeter
+                      password={password}
+                      isBreached={isBreached}
+                      checkingBreach={checkingBreach}
+                    />
                     {errors.password && (
                       <p className="text-sm text-destructive">{errors.password}</p>
                     )}
