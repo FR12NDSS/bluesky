@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
@@ -34,6 +35,7 @@ export interface PostCardProps {
 }
 
 export function PostCard({
+  id,
   author,
   content,
   image,
@@ -50,10 +52,22 @@ export function PostCard({
   onShare,
   onDelete,
 }: PostCardProps) {
+  const navigate = useNavigate();
   const timeAgo = formatDistanceToNow(createdAt, { addSuffix: true, locale: th });
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on buttons or links
+    if ((e.target as HTMLElement).closest("button, a, [role='menuitem']")) {
+      return;
+    }
+    navigate(`/post/${id}`);
+  };
+
   return (
-    <article className="border-b border-border p-4 transition-colors hover:bg-muted/30">
+    <article
+      onClick={handleCardClick}
+      className="border-b border-border p-4 transition-colors hover:bg-muted/30 cursor-pointer"
+    >
       <div className="flex gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
