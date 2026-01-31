@@ -26,6 +26,7 @@ export function usePosts() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -118,12 +119,13 @@ export function usePosts() {
     };
   }, [fetchPosts]);
 
-  const createPost = async (content: string, imageFile?: File | null) => {
+  const createPost = async (content: string, imageFile?: File) => {
     if (!user) {
       toast.error("กรุณาเข้าสู่ระบบ");
       return false;
     }
 
+    setIsCreating(true);
     try {
       let image_url = null;
 
@@ -186,6 +188,8 @@ export function usePosts() {
       console.error("Error creating post:", error);
       toast.error("ไม่สามารถโพสต์ได้");
       return false;
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -290,6 +294,7 @@ export function usePosts() {
   return {
     posts,
     loading,
+    isCreating,
     createPost,
     deletePost,
     toggleLike,
