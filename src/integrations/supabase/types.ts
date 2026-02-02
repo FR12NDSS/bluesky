@@ -331,7 +331,7 @@ export type Database = {
       }
     }
     Enums: {
-      notification_type: "follow" | "like" | "comment" | "repost"
+      notification_type: "follow" | "like" | "comment" | "repost" | "reply"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -459,7 +459,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      notification_type: ["follow", "like", "comment", "repost"],
+      notification_type: ["follow", "like", "comment", "repost", "reply"],
     },
   },
 } as const

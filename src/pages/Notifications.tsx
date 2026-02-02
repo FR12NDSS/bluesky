@@ -6,7 +6,7 @@ import { useNotifications, Notification } from "@/hooks/useNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, Check, Loader2, UserPlus, Heart, MessageCircle, Repeat2, Trash2 } from "lucide-react";
+import { Bell, Check, Loader2, UserPlus, Heart, MessageCircle, Repeat2, Trash2, Reply } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,8 @@ const NotificationIcon = ({ type }: { type: Notification["type"] }) => {
       return <MessageCircle className="h-4 w-4 text-green-500" />;
     case "repost":
       return <Repeat2 className="h-4 w-4 text-blue-500" />;
+    case "reply":
+      return <Reply className="h-4 w-4 text-purple-500" />;
     default:
       return <Bell className="h-4 w-4" />;
   }
@@ -36,6 +38,8 @@ const getNotificationText = (type: Notification["type"]) => {
       return "แสดงความคิดเห็นในโพสต์ของคุณ";
     case "repost":
       return "รีโพสต์โพสต์ของคุณ";
+    case "reply":
+      return "ตอบกลับความคิดเห็นของคุณ";
     default:
       return "";
   }
