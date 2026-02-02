@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
-import { ComposePost } from "@/components/post";
-import { PostCard } from "@/components/post";
+import { ComposePost, PostCard, CommentDialog } from "@/components/post";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosts } from "@/hooks/usePosts";
 import { Loader2 } from "lucide-react";
@@ -13,6 +12,13 @@ const Index = () => {
   const { posts, loading: postsLoading, createPost, deletePost, toggleLike, toggleRepost } = usePosts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"forYou" | "following">("forYou");
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<typeof posts[0] | null>(null);
+
+  const handleOpenCommentDialog = (post: typeof posts[0]) => {
+    setSelectedPost(post);
+    setCommentDialogOpen(true);
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -107,7 +113,7 @@ const Index = () => {
               isReposted={post.is_reposted}
               isOwner={post.user_id === user?.id}
               onLike={() => toggleLike(post.id)}
-              onComment={() => console.log("Comment:", post.id)}
+              onComment={() => handleOpenCommentDialog(post)}
               onRepost={() => toggleRepost(post.id)}
               onShare={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
@@ -122,6 +128,22 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      {/* Comment Dialog */}
+      {selectedPost && (
+        <CommentDialog
+          open={commentDialogOpen}
+          onOpenChange={setCommentDialogOpen}
+          postId={selectedPost.id}
+          postAuthor={{
+            name: selectedPost.author?.display_name || "ผู้ใช้",
+            handle: `@${selectedPost.author?.username || "user"}`,
+            avatar: selectedPost.author?.avatar_url,
+          }}
+          postContent={selectedPost.content}
+          postCreatedAt={new Date(selectedPost.created_at)}
+        />
+      )}
     </MainLayout>
   );
 };
