@@ -9,12 +9,15 @@ export interface Comment {
   created_at: string;
   user_id: string;
   post_id: string;
+  parent_id: string | null;
   author: {
     user_id: string;
     display_name: string | null;
     username: string | null;
     avatar_url: string | null;
   } | null;
+  replies?: Comment[];
+  reply_count?: number;
 }
 
 export function useComments(postId: string) {
@@ -45,12 +48,34 @@ export function useComments(postId: string) {
         .select("user_id, display_name, username, avatar_url")
         .in("user_id", userIds);
 
+      // Enrich comments with author data
       const enrichedComments = commentsData.map((comment) => ({
         ...comment,
         author: profiles?.find((p) => p.user_id === comment.user_id) || null,
       }));
 
-      setComments(enrichedComments);
+      // Organize comments into tree structure (parent comments with nested replies)
+      const parentComments: Comment[] = [];
+      const repliesMap = new Map<string, Comment[]>();
+
+      enrichedComments.forEach((comment) => {
+        if (comment.parent_id) {
+          const replies = repliesMap.get(comment.parent_id) || [];
+          replies.push(comment);
+          repliesMap.set(comment.parent_id, replies);
+        } else {
+          parentComments.push(comment);
+        }
+      });
+
+      // Attach replies to parent comments
+      const commentsWithReplies = parentComments.map((comment) => ({
+        ...comment,
+        replies: repliesMap.get(comment.id) || [],
+        reply_count: repliesMap.get(comment.id)?.length || 0,
+      }));
+
+      setComments(commentsWithReplies);
     } catch (error) {
       console.error("Error fetching comments:", error);
     } finally {
@@ -78,7 +103,7 @@ export function useComments(postId: string) {
     };
   }, [fetchComments, postId]);
 
-  const addComment = async (content: string) => {
+  const addComment = async (content: string, parentId?: string | null) => {
     if (!user) {
       toast.error("กรุณาเข้าสู่ระบบ");
       return false;
@@ -91,13 +116,26 @@ export function useComments(postId: string) {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("comments")
-        .insert({ user_id: user.id, post_id: postId, content: content.trim() });
+      const insertData: {
+        user_id: string;
+        post_id: string;
+        content: string;
+        parent_id?: string;
+      } = {
+        user_id: user.id,
+        post_id: postId,
+        content: content.trim(),
+      };
+
+      if (parentId) {
+        insertData.parent_id = parentId;
+      }
+
+      const { error } = await supabase.from("comments").insert(insertData);
 
       if (error) throw error;
 
-      toast.success("แสดงความคิดเห็นแล้ว");
+      toast.success(parentId ? "ตอบกลับแล้ว" : "แสดงความคิดเห็นแล้ว");
       return true;
     } catch (error) {
       console.error("Error adding comment:", error);

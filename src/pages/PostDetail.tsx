@@ -218,6 +218,8 @@ export default function PostDetail() {
               key={comment.id}
               comment={comment}
               onDelete={deleteComment}
+              onReply={addComment}
+              isSubmitting={isSubmitting}
             />
           ))
         )}
