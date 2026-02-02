@@ -13,7 +13,7 @@ export interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: "follow" | "like" | "comment" | "repost";
+  type: "follow" | "like" | "comment" | "repost" | "reply";
   post_id: string | null;
   read: boolean;
   created_at: string;
