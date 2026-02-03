@@ -13,31 +13,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { useComments } from "@/hooks/useComments";
 import { useMention } from "@/hooks/useMention";
 import { MentionSuggestions } from "./MentionSuggestions";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CommentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  postId: string;
-  postAuthor: {
+  postId: string | null;
+  postAuthor?: {
     name: string;
     handle: string;
     avatar?: string | null;
   };
-  postContent: string;
-  postCreatedAt: Date;
+  postContent?: string;
+  postCreatedAt?: Date;
 }
 
 export function CommentDialog({
   open,
   onOpenChange,
   postId,
-  postAuthor,
-  postContent,
-  postCreatedAt,
+  postAuthor: propAuthor,
+  postContent: propContent,
+  postCreatedAt: propCreatedAt,
 }: CommentDialogProps) {
   const [content, setContent] = useState("");
+  const [postData, setPostData] = useState<{
+    author: { name: string; handle: string; avatar?: string | null };
+    content: string;
+    createdAt: Date;
+  } | null>(null);
+  const [loadingPost, setLoadingPost] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { addComment, isSubmitting } = useComments(postId);
+  const { addComment, isSubmitting } = useComments(postId || "");
   
   const {
     mentionQuery,
@@ -50,7 +57,60 @@ export function CommentDialog({
     closeSuggestions,
   } = useMention();
 
-  const timeAgo = formatDistanceToNow(postCreatedAt, { addSuffix: true, locale: th });
+  // Fetch post data if not provided via props
+  useEffect(() => {
+    if (!open || !postId) return;
+    
+    // If props are provided, use them
+    if (propAuthor && propContent && propCreatedAt) {
+      setPostData({
+        author: propAuthor,
+        content: propContent,
+        createdAt: propCreatedAt,
+      });
+      return;
+    }
+
+    // Otherwise fetch from database
+    const fetchPost = async () => {
+      setLoadingPost(true);
+      try {
+        const { data: post, error } = await supabase
+          .from("posts")
+          .select("content, created_at, user_id")
+          .eq("id", postId)
+          .single();
+
+        if (error) throw error;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, username, avatar_url")
+          .eq("user_id", post.user_id)
+          .single();
+
+        setPostData({
+          author: {
+            name: profile?.display_name || "ผู้ใช้",
+            handle: profile?.username ? `@${profile.username}` : "",
+            avatar: profile?.avatar_url,
+          },
+          content: post.content,
+          createdAt: new Date(post.created_at),
+        });
+      } catch (error) {
+        console.error("Error fetching post:", error);
+      } finally {
+        setLoadingPost(false);
+      }
+    };
+
+    fetchPost();
+  }, [open, postId, propAuthor, propContent, propCreatedAt]);
+
+  const timeAgo = postData 
+    ? formatDistanceToNow(postData.createdAt, { addSuffix: true, locale: th })
+    : "";
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -115,35 +175,41 @@ export function CommentDialog({
           <DialogTitle>ตอบกลับ</DialogTitle>
         </DialogHeader>
 
-        {/* Original Post Preview */}
-        <div className="flex gap-3 border-b border-border pb-4">
-          <div className="flex-shrink-0">
-            {postAuthor.avatar ? (
-              <img
-                src={postAuthor.avatar}
-                alt={postAuthor.name}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                {postAuthor.name.charAt(0)}
-              </div>
-            )}
+        {/* Loading or Original Post Preview */}
+        {loadingPost ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground text-sm">
-                {postAuthor.name}
-              </span>
-              <span className="text-muted-foreground text-sm">{postAuthor.handle}</span>
-              <span className="text-muted-foreground text-sm">·</span>
-              <span className="text-muted-foreground text-sm">{timeAgo}</span>
+        ) : postData ? (
+          <div className="flex gap-3 border-b border-border pb-4">
+            <div className="flex-shrink-0">
+              {postData.author.avatar ? (
+                <img
+                  src={postData.author.avatar}
+                  alt={postData.author.name}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                  {postData.author.name.charAt(0)}
+                </div>
+              )}
             </div>
-            <p className="mt-1 text-sm text-foreground line-clamp-3">
-              {postContent}
-            </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground text-sm">
+                  {postData.author.name}
+                </span>
+                <span className="text-muted-foreground text-sm">{postData.author.handle}</span>
+                <span className="text-muted-foreground text-sm">·</span>
+                <span className="text-muted-foreground text-sm">{timeAgo}</span>
+              </div>
+              <p className="mt-1 text-sm text-foreground line-clamp-3">
+                {postData.content}
+              </p>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Reply Form */}
         <div className="relative">
