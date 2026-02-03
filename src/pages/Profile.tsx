@@ -3,13 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
+import { useUserPosts } from "@/hooks/useUserPosts";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { FollowListDialog } from "@/components/profile/FollowListDialog";
+import { PostCard, CommentDialog } from "@/components/post";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { user, profile, loading } = useAuth();
@@ -17,8 +20,11 @@ const Profile = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const { followersCount, followingCount } = useFollow(user?.id);
+  const { posts, loading: postsLoading, toggleLike, toggleRepost, deletePost } = useUserPosts(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -57,7 +63,7 @@ const Profile = () => {
             <h1 className="text-lg font-bold text-foreground">
               {profile.display_name || "ผู้ใช้"}
             </h1>
-            <p className="text-sm text-muted-foreground">0 โพสต์</p>
+            <p className="text-sm text-muted-foreground">{posts.length} โพสต์</p>
           </div>
         </div>
       </header>
@@ -167,15 +173,55 @@ const Profile = () => {
         </TabsList>
 
         <TabsContent value="posts" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">📝</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีโพสต์
-            </h3>
-            <p className="text-muted-foreground">
-              เริ่มโพสต์เพื่อแชร์ความคิดของคุณ
-            </p>
-          </div>
+          {postsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">📝</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์
+              </h3>
+              <p className="text-muted-foreground">
+                เริ่มโพสต์เพื่อแชร์ความคิดของคุณ
+              </p>
+            </div>
+          ) : (
+            <div>
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
+                  author={{
+                    name: post.author?.display_name || "ผู้ใช้",
+                    handle: post.author?.username ? `@${post.author.username}` : "",
+                    avatar: post.author?.avatar_url,
+                  }}
+                  content={post.content}
+                  image={post.image_url}
+                  createdAt={new Date(post.created_at)}
+                  likes={post.likes_count}
+                  comments={post.comments_count}
+                  reposts={post.reposts_count}
+                  isLiked={post.is_liked}
+                  isReposted={post.is_reposted}
+                  isOwner={user?.id === post.user_id}
+                  onLike={() => toggleLike(post.id)}
+                  onComment={() => {
+                    setSelectedPostId(post.id);
+                    setCommentDialogOpen(true);
+                  }}
+                  onRepost={() => toggleRepost(post.id)}
+                  onShare={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                    toast.success("คัดลอกลิงก์แล้ว");
+                  }}
+                  onDelete={() => deletePost(post.id)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="replies" className="mt-0">
@@ -228,6 +274,12 @@ const Profile = () => {
           />
         </>
       )}
+      {/* Comment Dialog */}
+      <CommentDialog
+        open={commentDialogOpen}
+        onOpenChange={setCommentDialogOpen}
+        postId={selectedPostId}
+      />
     </MainLayout>
   );
 };
