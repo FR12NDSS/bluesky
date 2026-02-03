@@ -4,11 +4,13 @@ import { MainLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
 import { useUserPosts } from "@/hooks/useUserPosts";
+import { useUserComments } from "@/hooks/useUserComments";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { FollowListDialog } from "@/components/profile/FollowListDialog";
+import { UserCommentCard } from "@/components/profile/UserCommentCard";
 import { PostCard, CommentDialog } from "@/components/post";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -25,6 +27,7 @@ const Profile = () => {
 
   const { followersCount, followingCount } = useFollow(user?.id);
   const { posts, loading: postsLoading, toggleLike, toggleRepost, deletePost } = useUserPosts(user?.id);
+  const { comments, loading: commentsLoading } = useUserComments(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -225,15 +228,35 @@ const Profile = () => {
         </TabsContent>
 
         <TabsContent value="replies" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">💬</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีการตอบกลับ
-            </h3>
-            <p className="text-muted-foreground">
-              ร่วมสนทนากับคนอื่นๆ
-            </p>
-          </div>
+          {commentsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">💬</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีการตอบกลับ
+              </h3>
+              <p className="text-muted-foreground">
+                ร่วมสนทนากับคนอื่นๆ
+              </p>
+            </div>
+          ) : (
+            <div>
+              {comments.map((comment) => (
+                <UserCommentCard
+                  key={comment.id}
+                  comment={comment}
+                  userProfile={{
+                    display_name: profile.display_name,
+                    username: profile.username,
+                    avatar_url: profile.avatar_url,
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="likes" className="mt-0">
