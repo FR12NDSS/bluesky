@@ -6,6 +6,7 @@ import { useFollow } from "@/hooks/useFollow";
 import { useUserPosts } from "@/hooks/useUserPosts";
 import { useUserComments } from "@/hooks/useUserComments";
 import { useUserLikedPosts } from "@/hooks/useUserLikedPosts";
+import { useUserRepostedPosts } from "@/hooks/useUserRepostedPosts";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
@@ -35,6 +36,12 @@ const Profile = () => {
     toggleLike: toggleLikedPostLike, 
     toggleRepost: toggleLikedPostRepost 
   } = useUserLikedPosts(user?.id);
+  const { 
+    posts: repostedPosts, 
+    loading: repostedPostsLoading, 
+    toggleLike: toggleRepostedPostLike, 
+    toggleRepost: toggleRepostedPostRepost 
+  } = useUserRepostedPosts(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -161,22 +168,28 @@ const Profile = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="posts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border bg-transparent p-0">
+        <TabsList className="grid w-full grid-cols-4 rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger
             value="posts"
-            className="rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="rounded-none border-b-2 border-transparent py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             โพสต์
           </TabsTrigger>
           <TabsTrigger
             value="replies"
-            className="rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="rounded-none border-b-2 border-transparent py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             ตอบกลับ
           </TabsTrigger>
           <TabsTrigger
+            value="reposts"
+            className="rounded-none border-b-2 border-transparent py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent"
+          >
+            รีโพสต์
+          </TabsTrigger>
+          <TabsTrigger
             value="likes"
-            className="rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="rounded-none border-b-2 border-transparent py-3 text-sm data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             ถูกใจ
           </TabsTrigger>
@@ -259,6 +272,57 @@ const Profile = () => {
                     display_name: profile.display_name,
                     username: profile.username,
                     avatar_url: profile.avatar_url,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reposts" className="mt-0">
+          {repostedPostsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : repostedPosts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">🔄</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์ที่รีโพสต์
+              </h3>
+              <p className="text-muted-foreground">
+                รีโพสต์เพื่อแชร์โพสต์ที่คุณชอบ
+              </p>
+            </div>
+          ) : (
+            <div>
+              {repostedPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
+                  author={{
+                    name: post.author?.display_name || "ผู้ใช้",
+                    handle: post.author?.username ? `@${post.author.username}` : "",
+                    avatar: post.author?.avatar_url,
+                  }}
+                  content={post.content}
+                  image={post.image_url}
+                  createdAt={new Date(post.created_at)}
+                  likes={post.likes_count}
+                  comments={post.comments_count}
+                  reposts={post.reposts_count}
+                  isLiked={post.is_liked}
+                  isReposted={post.is_reposted}
+                  isOwner={user?.id === post.user_id}
+                  onLike={() => toggleRepostedPostLike(post.id)}
+                  onComment={() => {
+                    setSelectedPostId(post.id);
+                    setCommentDialogOpen(true);
+                  }}
+                  onRepost={() => toggleRepostedPostRepost(post.id)}
+                  onShare={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                    toast.success("คัดลอกลิงก์แล้ว");
                   }}
                 />
               ))}
