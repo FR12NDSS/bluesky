@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
 import { useUserPosts } from "@/hooks/useUserPosts";
 import { useUserComments } from "@/hooks/useUserComments";
+import { useUserLikedPosts } from "@/hooks/useUserLikedPosts";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
@@ -28,6 +29,12 @@ const Profile = () => {
   const { followersCount, followingCount } = useFollow(user?.id);
   const { posts, loading: postsLoading, toggleLike, toggleRepost, deletePost } = useUserPosts(user?.id);
   const { comments, loading: commentsLoading } = useUserComments(user?.id);
+  const { 
+    posts: likedPosts, 
+    loading: likedPostsLoading, 
+    toggleLike: toggleLikedPostLike, 
+    toggleRepost: toggleLikedPostRepost 
+  } = useUserLikedPosts(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -260,15 +267,54 @@ const Profile = () => {
         </TabsContent>
 
         <TabsContent value="likes" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">❤️</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีโพสต์ที่ถูกใจ
-            </h3>
-            <p className="text-muted-foreground">
-              กดถูกใจโพสต์ที่คุณชอบ
-            </p>
-          </div>
+          {likedPostsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : likedPosts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">❤️</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์ที่ถูกใจ
+              </h3>
+              <p className="text-muted-foreground">
+                กดถูกใจโพสต์ที่คุณชอบ
+              </p>
+            </div>
+          ) : (
+            <div>
+              {likedPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
+                  author={{
+                    name: post.author?.display_name || "ผู้ใช้",
+                    handle: post.author?.username ? `@${post.author.username}` : "",
+                    avatar: post.author?.avatar_url,
+                  }}
+                  content={post.content}
+                  image={post.image_url}
+                  createdAt={new Date(post.created_at)}
+                  likes={post.likes_count}
+                  comments={post.comments_count}
+                  reposts={post.reposts_count}
+                  isLiked={post.is_liked}
+                  isReposted={post.is_reposted}
+                  isOwner={user?.id === post.user_id}
+                  onLike={() => toggleLikedPostLike(post.id)}
+                  onComment={() => {
+                    setSelectedPostId(post.id);
+                    setCommentDialogOpen(true);
+                  }}
+                  onRepost={() => toggleLikedPostRepost(post.id)}
+                  onShare={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                    toast.success("คัดลอกลิงก์แล้ว");
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
