@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
-import { PostCard, CommentDialog } from "@/components/post";
+import { PostCard, CommentDialog, RepostDialog } from "@/components/post";
 import { UserCommentCard } from "@/components/profile";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
@@ -39,6 +39,8 @@ const UserProfile = () => {
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [repostDialogOpen, setRepostDialogOpen] = useState(false);
+  const [repostPost, setRepostPost] = useState<any>(null);
 
   const {
     followersCount,
@@ -78,6 +80,11 @@ const UserProfile = () => {
   const handleOpenCommentDialog = (post: any) => {
     setSelectedPost(post);
     setCommentDialogOpen(true);
+  };
+
+  const handleOpenRepostDialog = (post: any, toggleFn: (id: string) => void) => {
+    setRepostPost({ ...post, toggleFn });
+    setRepostDialogOpen(true);
   };
 
   // If viewing own profile, redirect to /profile
@@ -296,7 +303,7 @@ const UserProfile = () => {
                 isOwner={post.user_id === user?.id}
                 onLike={() => togglePostLike(post.id)}
                 onComment={() => handleOpenCommentDialog(post)}
-                onRepost={() => togglePostRepost(post.id)}
+                onRepost={() => handleOpenRepostDialog(post, togglePostRepost)}
                 onShare={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                 }}
@@ -372,7 +379,7 @@ const UserProfile = () => {
                 isOwner={post.user_id === user?.id}
                 onLike={() => toggleLikedPostLike(post.id)}
                 onComment={() => handleOpenCommentDialog(post)}
-                onRepost={() => {}}
+                onRepost={() => handleOpenRepostDialog(post, () => {})}
                 onShare={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                 }}
@@ -418,7 +425,7 @@ const UserProfile = () => {
                 isOwner={post.user_id === user?.id}
                 onLike={() => toggleRepostedPostLike(post.id)}
                 onComment={() => handleOpenCommentDialog(post)}
-                onRepost={() => toggleRepostedPostRepost(post.id)}
+                onRepost={() => handleOpenRepostDialog(post, toggleRepostedPostRepost)}
                 onShare={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                 }}
@@ -468,6 +475,22 @@ const UserProfile = () => {
           }}
           postContent={selectedPost.content}
           postCreatedAt={new Date(selectedPost.created_at)}
+        />
+      )}
+
+      {/* Repost Dialog */}
+      {repostPost && (
+        <RepostDialog
+          open={repostDialogOpen}
+          onOpenChange={setRepostDialogOpen}
+          postAuthor={{
+            name: repostPost.author?.display_name || "ผู้ใช้",
+            handle: `@${repostPost.author?.username || "user"}`,
+            avatar: repostPost.author?.avatar_url,
+          }}
+          postContent={repostPost.content}
+          isReposted={repostPost.is_reposted}
+          onRepost={() => repostPost.toggleFn(repostPost.id)}
         />
       )}
     </MainLayout>

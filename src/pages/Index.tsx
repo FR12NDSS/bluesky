@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
-import { ComposePost, PostCard, CommentDialog } from "@/components/post";
+import { ComposePost, PostCard, CommentDialog, RepostDialog } from "@/components/post";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosts } from "@/hooks/usePosts";
 import { Loader2 } from "lucide-react";
@@ -14,10 +14,17 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<"forYou" | "following">("forYou");
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<typeof posts[0] | null>(null);
+  const [repostDialogOpen, setRepostDialogOpen] = useState(false);
+  const [repostPost, setRepostPost] = useState<typeof posts[0] | null>(null);
 
   const handleOpenCommentDialog = (post: typeof posts[0]) => {
     setSelectedPost(post);
     setCommentDialogOpen(true);
+  };
+
+  const handleOpenRepostDialog = (post: typeof posts[0]) => {
+    setRepostPost(post);
+    setRepostDialogOpen(true);
   };
 
   useEffect(() => {
@@ -114,7 +121,7 @@ const Index = () => {
               isOwner={post.user_id === user?.id}
               onLike={() => toggleLike(post.id)}
               onComment={() => handleOpenCommentDialog(post)}
-              onRepost={() => toggleRepost(post.id)}
+              onRepost={() => handleOpenRepostDialog(post)}
               onShare={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
               }}
@@ -142,6 +149,22 @@ const Index = () => {
           }}
           postContent={selectedPost.content}
           postCreatedAt={new Date(selectedPost.created_at)}
+        />
+      )}
+
+      {/* Repost Dialog */}
+      {repostPost && (
+        <RepostDialog
+          open={repostDialogOpen}
+          onOpenChange={setRepostDialogOpen}
+          postAuthor={{
+            name: repostPost.author?.display_name || "ผู้ใช้",
+            handle: `@${repostPost.author?.username || "user"}`,
+            avatar: repostPost.author?.avatar_url,
+          }}
+          postContent={repostPost.content}
+          isReposted={repostPost.is_reposted}
+          onRepost={() => toggleRepost(repostPost.id)}
         />
       )}
     </MainLayout>
