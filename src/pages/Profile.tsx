@@ -13,7 +13,7 @@ import { Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { FollowListDialog } from "@/components/profile/FollowListDialog";
 import { UserCommentCard } from "@/components/profile/UserCommentCard";
-import { PostCard, CommentDialog } from "@/components/post";
+import { PostCard, CommentDialog, RepostDialog } from "@/components/post";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { toast } from "sonner";
@@ -26,6 +26,9 @@ const Profile = () => {
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [repostDialogOpen, setRepostDialogOpen] = useState(false);
+  const [repostPost, setRepostPost] = useState<any>(null);
+  const [repostToggleFn, setRepostToggleFn] = useState<((id: string) => void) | null>(null);
 
   const { followersCount, followingCount } = useFollow(user?.id);
   const { posts, loading: postsLoading, toggleLike, toggleRepost, deletePost } = useUserPosts(user?.id);
@@ -42,6 +45,12 @@ const Profile = () => {
     toggleLike: toggleRepostedPostLike, 
     toggleRepost: toggleRepostedPostRepost 
   } = useUserRepostedPosts(user?.id);
+
+  const handleOpenRepostDialog = (post: any, toggleFn: (id: string) => void) => {
+    setRepostPost(post);
+    setRepostToggleFn(() => toggleFn);
+    setRepostDialogOpen(true);
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -235,7 +244,7 @@ const Profile = () => {
                     setSelectedPostId(post.id);
                     setCommentDialogOpen(true);
                   }}
-                  onRepost={() => toggleRepost(post.id)}
+                  onRepost={() => handleOpenRepostDialog(post, toggleRepost)}
                   onShare={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                     toast.success("คัดลอกลิงก์แล้ว");
@@ -319,7 +328,7 @@ const Profile = () => {
                     setSelectedPostId(post.id);
                     setCommentDialogOpen(true);
                   }}
-                  onRepost={() => toggleRepostedPostRepost(post.id)}
+                  onRepost={() => handleOpenRepostDialog(post, toggleRepostedPostRepost)}
                   onShare={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                     toast.success("คัดลอกลิงก์แล้ว");
@@ -370,7 +379,7 @@ const Profile = () => {
                     setSelectedPostId(post.id);
                     setCommentDialogOpen(true);
                   }}
-                  onRepost={() => toggleLikedPostRepost(post.id)}
+                  onRepost={() => handleOpenRepostDialog(post, toggleLikedPostRepost)}
                   onShare={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
                     toast.success("คัดลอกลิงก์แล้ว");
@@ -413,6 +422,22 @@ const Profile = () => {
         onOpenChange={setCommentDialogOpen}
         postId={selectedPostId}
       />
+
+      {/* Repost Dialog */}
+      {repostPost && (
+        <RepostDialog
+          open={repostDialogOpen}
+          onOpenChange={setRepostDialogOpen}
+          postAuthor={{
+            name: repostPost.author?.display_name || "ผู้ใช้",
+            handle: repostPost.author?.username ? `@${repostPost.author.username}` : "",
+            avatar: repostPost.author?.avatar_url,
+          }}
+          postContent={repostPost.content}
+          isReposted={repostPost.is_reposted}
+          onRepost={() => repostToggleFn?.(repostPost.id)}
+        />
+      )}
     </MainLayout>
   );
 };
