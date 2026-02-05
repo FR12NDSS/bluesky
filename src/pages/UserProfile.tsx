@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout";
+import { PostCard, CommentDialog } from "@/components/post";
+import { UserCommentCard } from "@/components/profile";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollow } from "@/hooks/useFollow";
+import { useUserPosts } from "@/hooks/useUserPosts";
+import { useUserLikedPosts } from "@/hooks/useUserLikedPosts";
+import { useUserRepostedPosts } from "@/hooks/useUserRepostedPosts";
+import { useUserComments } from "@/hooks/useUserComments";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +37,8 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
 
   const {
     followersCount,
@@ -39,6 +47,38 @@ const UserProfile = () => {
     actionLoading,
     toggleFollow,
   } = useFollow(userId);
+
+  // Fetch user's posts, likes, reposts, and comments
+  const { 
+    posts: userPosts, 
+    loading: postsLoading, 
+    toggleLike: togglePostLike, 
+    toggleRepost: togglePostRepost,
+    deletePost 
+  } = useUserPosts(userId);
+
+  const { 
+    posts: likedPosts, 
+    loading: likedLoading, 
+    toggleLike: toggleLikedPostLike 
+  } = useUserLikedPosts(userId);
+
+  const { 
+    posts: repostedPosts, 
+    loading: repostedLoading, 
+    toggleLike: toggleRepostedPostLike, 
+    toggleRepost: toggleRepostedPostRepost 
+  } = useUserRepostedPosts(userId);
+
+  const { 
+    comments: userComments, 
+    loading: commentsLoading 
+  } = useUserComments(userId);
+
+  const handleOpenCommentDialog = (post: any) => {
+    setSelectedPost(post);
+    setCommentDialogOpen(true);
+  };
 
   // If viewing own profile, redirect to /profile
   useEffect(() => {
@@ -115,7 +155,7 @@ const UserProfile = () => {
             <h1 className="text-lg font-bold text-foreground">
               {profile.display_name || "ผู้ใช้"}
             </h1>
-            <p className="text-sm text-muted-foreground">0 โพสต์</p>
+            <p className="text-sm text-muted-foreground">{userPosts.length} โพสต์</p>
           </div>
         </div>
       </header>
@@ -203,7 +243,7 @@ const UserProfile = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="posts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border bg-transparent p-0">
+        <TabsList className="grid w-full grid-cols-4 rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger
             value="posts"
             className="rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -222,42 +262,180 @@ const UserProfile = () => {
           >
             ถูกใจ
           </TabsTrigger>
+          <TabsTrigger
+            value="reposts"
+            className="rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent"
+          >
+            รีโพสต์
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">📝</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีโพสต์
-            </h3>
-            <p className="text-muted-foreground">
-              ผู้ใช้นี้ยังไม่ได้โพสต์อะไร
-            </p>
-          </div>
+          {postsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : userPosts.length > 0 ? (
+            userPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                id={post.id}
+                author={{
+                  name: post.author?.display_name || "ผู้ใช้",
+                  handle: `@${post.author?.username || "user"}`,
+                  avatar: post.author?.avatar_url,
+                }}
+                content={post.content}
+                image={post.image_url}
+                createdAt={new Date(post.created_at)}
+                likes={post.likes_count}
+                comments={post.comments_count}
+                reposts={post.reposts_count}
+                isLiked={post.is_liked}
+                isReposted={post.is_reposted}
+                isOwner={post.user_id === user?.id}
+                onLike={() => togglePostLike(post.id)}
+                onComment={() => handleOpenCommentDialog(post)}
+                onRepost={() => togglePostRepost(post.id)}
+                onShare={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                }}
+                onDelete={() => deletePost(post.id)}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">📝</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์
+              </h3>
+              <p className="text-muted-foreground">
+                ผู้ใช้นี้ยังไม่ได้โพสต์อะไร
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="replies" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">💬</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีการตอบกลับ
-            </h3>
-            <p className="text-muted-foreground">
-              ผู้ใช้นี้ยังไม่ได้ตอบกลับอะไร
-            </p>
-          </div>
+          {commentsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : userComments.length > 0 ? (
+            userComments.map((comment) => (
+              <UserCommentCard 
+                key={comment.id} 
+                comment={comment} 
+                userProfile={{
+                  display_name: profile.display_name,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                }}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">💬</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีการตอบกลับ
+              </h3>
+              <p className="text-muted-foreground">
+                ผู้ใช้นี้ยังไม่ได้ตอบกลับอะไร
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="likes" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 text-6xl">❤️</div>
-            <h3 className="mb-2 text-xl font-bold text-foreground">
-              ยังไม่มีโพสต์ที่ถูกใจ
-            </h3>
-            <p className="text-muted-foreground">
-              ผู้ใช้นี้ยังไม่ได้ถูกใจโพสต์ใดๆ
-            </p>
-          </div>
+          {likedLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : likedPosts.length > 0 ? (
+            likedPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                id={post.id}
+                author={{
+                  name: post.author?.display_name || "ผู้ใช้",
+                  handle: `@${post.author?.username || "user"}`,
+                  avatar: post.author?.avatar_url,
+                }}
+                content={post.content}
+                image={post.image_url}
+                createdAt={new Date(post.created_at)}
+                likes={post.likes_count}
+                comments={post.comments_count}
+                reposts={post.reposts_count}
+                isLiked={post.is_liked}
+                isReposted={post.is_reposted}
+                isOwner={post.user_id === user?.id}
+                onLike={() => toggleLikedPostLike(post.id)}
+                onComment={() => handleOpenCommentDialog(post)}
+                onRepost={() => {}}
+                onShare={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                }}
+                onDelete={() => {}}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">❤️</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์ที่ถูกใจ
+              </h3>
+              <p className="text-muted-foreground">
+                ผู้ใช้นี้ยังไม่ได้ถูกใจโพสต์ใดๆ
+              </p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reposts" className="mt-0">
+          {repostedLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : repostedPosts.length > 0 ? (
+            repostedPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                id={post.id}
+                author={{
+                  name: post.author?.display_name || "ผู้ใช้",
+                  handle: `@${post.author?.username || "user"}`,
+                  avatar: post.author?.avatar_url,
+                }}
+                content={post.content}
+                image={post.image_url}
+                createdAt={new Date(post.created_at)}
+                likes={post.likes_count}
+                comments={post.comments_count}
+                reposts={post.reposts_count}
+                isLiked={post.is_liked}
+                isReposted={post.is_reposted}
+                isOwner={post.user_id === user?.id}
+                onLike={() => toggleRepostedPostLike(post.id)}
+                onComment={() => handleOpenCommentDialog(post)}
+                onRepost={() => toggleRepostedPostRepost(post.id)}
+                onShare={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+                }}
+                onDelete={() => {}}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 text-6xl">🔁</div>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                ยังไม่มีโพสต์ที่รีโพสต์
+              </h3>
+              <p className="text-muted-foreground">
+                ผู้ใช้นี้ยังไม่ได้รีโพสต์อะไร
+              </p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -276,6 +454,22 @@ const UserProfile = () => {
         type="following"
         title="กำลังติดตาม"
       />
+
+      {/* Comment Dialog */}
+      {selectedPost && (
+        <CommentDialog
+          open={commentDialogOpen}
+          onOpenChange={setCommentDialogOpen}
+          postId={selectedPost.id}
+          postAuthor={{
+            name: selectedPost.author?.display_name || "ผู้ใช้",
+            handle: `@${selectedPost.author?.username || "user"}`,
+            avatar: selectedPost.author?.avatar_url,
+          }}
+          postContent={selectedPost.content}
+          postCreatedAt={new Date(selectedPost.created_at)}
+        />
+      )}
     </MainLayout>
   );
 };
