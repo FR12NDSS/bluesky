@@ -20,6 +20,26 @@ export interface Post {
   reposts_count: number;
   is_liked: boolean;
   is_reposted: boolean;
+  // Quote repost fields
+  is_quote_repost?: boolean;
+  quote_content?: string | null;
+  original_post?: {
+    id: string;
+    content: string;
+    image_url: string | null;
+    author: {
+      user_id: string;
+      display_name: string | null;
+      username: string | null;
+      avatar_url: string | null;
+    } | null;
+  } | null;
+  reposted_by?: {
+    user_id: string;
+    display_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
 }
 
 export function usePosts() {
@@ -291,6 +311,45 @@ export function usePosts() {
     }
   };
 
+  const quoteRepost = async (postId: string, quoteContent: string) => {
+    if (!user) {
+      toast.error("กรุณาเข้าสู่ระบบ");
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("reposts")
+        .insert({ 
+          user_id: user.id, 
+          post_id: postId,
+          quote_content: quoteContent
+        });
+
+      if (error) throw error;
+
+      // Update post repost count
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                is_reposted: true,
+                reposts_count: p.reposts_count + 1,
+              }
+            : p
+        )
+      );
+
+      toast.success("โควตรีโพสต์สำเร็จ!");
+      return true;
+    } catch (error) {
+      console.error("Error quote reposting:", error);
+      toast.error("ไม่สามารถโควตรีโพสต์ได้");
+      return false;
+    }
+  };
+
   return {
     posts,
     loading,
@@ -299,6 +358,7 @@ export function usePosts() {
     deletePost,
     toggleLike,
     toggleRepost,
+    quoteRepost,
     refetch: fetchPosts,
   };
 }

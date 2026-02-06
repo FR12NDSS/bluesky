@@ -17,6 +17,7 @@ import { FollowButton } from "@/components/profile/FollowButton";
 import { FollowListDialog } from "@/components/profile/FollowListDialog";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface Profile {
   id: string;
@@ -85,6 +86,31 @@ const UserProfile = () => {
   const handleOpenRepostDialog = (post: any, toggleFn: (id: string) => void) => {
     setRepostPost({ ...post, toggleFn });
     setRepostDialogOpen(true);
+  };
+
+  const handleQuoteRepost = async (postId: string, quoteContent: string) => {
+    if (!user) {
+      toast.error("กรุณาเข้าสู่ระบบ");
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("reposts")
+        .insert({ 
+          user_id: user.id, 
+          post_id: postId,
+          quote_content: quoteContent
+        });
+
+      if (error) throw error;
+      toast.success("โควตรีโพสต์สำเร็จ!");
+      return true;
+    } catch (error) {
+      console.error("Error quote reposting:", error);
+      toast.error("ไม่สามารถโควตรีโพสต์ได้");
+      return false;
+    }
   };
 
   // If viewing own profile, redirect to /profile
@@ -491,6 +517,7 @@ const UserProfile = () => {
           postContent={repostPost.content}
           isReposted={repostPost.is_reposted}
           onRepost={() => repostPost.toggleFn(repostPost.id)}
+          onQuoteRepost={(content) => handleQuoteRepost(repostPost.id, content)}
         />
       )}
     </MainLayout>
