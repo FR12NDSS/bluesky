@@ -1,9 +1,10 @@
-import { Home, Search, Bell, User, Settings, LogOut, Cloud } from "lucide-react";
+import { Home, Search, Bell, User, Settings, LogOut, Cloud, Shield } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const baseNavItems = [
   { icon: Home, label: "หน้าแรก", path: "/" },
@@ -17,10 +18,16 @@ export function DesktopSidebar() {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const { isAdmin } = useAdmin();
 
   const handleSignOut = async () => {
     await signOut();
   };
+
+  // Add admin item if user is admin
+  const navItems = isAdmin 
+    ? [...baseNavItems, { icon: Shield, label: "แอดมิน", path: "/admin" }]
+    : baseNavItems;
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-border bg-card p-4 md:flex lg:w-72">
@@ -34,7 +41,7 @@ export function DesktopSidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-2">
-        {baseNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           const showBadge = item.path === "/notifications" && unreadCount > 0;

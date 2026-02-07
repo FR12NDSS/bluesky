@@ -285,6 +285,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -296,6 +317,17 @@ export type Database = {
       }
       get_follower_count: { Args: { target_user_id: string }; Returns: number }
       get_following_count: { Args: { target_user_id: string }; Returns: number }
+      get_platform_stats: {
+        Args: never
+        Returns: {
+          posts_today: number
+          total_comments: number
+          total_likes: number
+          total_posts: number
+          total_users: number
+          users_today: number
+        }[]
+      }
       get_post_stats: {
         Args: { target_post_id: string }
         Returns: {
@@ -324,6 +356,14 @@ export type Database = {
         Args: { target_post_id: string; user_uuid: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_following: {
         Args: { follower: string; target: string }
         Returns: boolean
@@ -334,6 +374,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       notification_type: "follow" | "like" | "comment" | "repost" | "reply"
     }
     CompositeTypes: {
@@ -462,6 +503,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       notification_type: ["follow", "like", "comment", "repost", "reply"],
     },
   },
