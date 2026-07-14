@@ -116,7 +116,7 @@ export function usePosts() {
 
       setPosts(enrichedPosts);
     } catch (error) {
-      console.error("Error fetching posts:", error);
+      logger.error("Error fetching posts:", error);
       toast.error("ไม่สามารถโหลดโพสต์ได้");
     } finally {
       setLoading(false);
