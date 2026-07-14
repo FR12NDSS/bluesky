@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+
+const MAX_HASHTAGS_PER_POST = 10;
+const MAX_HASHTAG_LENGTH = 50;
 
 export interface Post {
   id: string;
