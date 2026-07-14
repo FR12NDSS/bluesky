@@ -13,6 +13,7 @@ import Search from "./pages/Search";
 import Compose from "./pages/Compose";
 import PostDetail from "./pages/PostDetail";
 import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/compose" element={<Compose />} />
             <Route path="/post/:postId" element={<PostDetail />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
