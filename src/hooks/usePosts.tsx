@@ -151,6 +151,19 @@ export function usePosts() {
 
     setIsCreating(true);
     try {
+      // Client-side hashtag validation (server enforces via CHECK + trigger)
+      const hashtags = content.match(/#[\wก-๙]+/g) || [];
+      if (hashtags.length > MAX_HASHTAGS_PER_POST) {
+        toast.error(`ใช้แฮชแท็กได้ไม่เกิน ${MAX_HASHTAGS_PER_POST} แท็กต่อโพสต์`);
+        return false;
+      }
+      for (const tag of hashtags) {
+        if (tag.length > MAX_HASHTAG_LENGTH) {
+          toast.error(`แฮชแท็กยาวเกินไป (สูงสุด ${MAX_HASHTAG_LENGTH} ตัวอักษร)`);
+          return false;
+        }
+      }
+
       let image_url = null;
 
       if (imageFile) {
@@ -170,46 +183,18 @@ export function usePosts() {
         image_url = urlData.publicUrl;
       }
 
-      // Insert post
+      // Insert post — hashtag rows are created/updated by a
+      // SECURITY DEFINER trigger on the posts table.
       const { error: postError } = await supabase
         .from("posts")
         .insert({ user_id: user.id, content, image_url });
 
       if (postError) throw postError;
 
-      // Extract and save hashtags
-      const hashtags = content.match(/#[\wก-๙]+/g);
-      if (hashtags) {
-        for (const tag of hashtags) {
-          const cleanTag = tag.toLowerCase();
-          
-          // Upsert hashtag
-          const { data: existingTag } = await supabase
-            .from("hashtags")
-            .select("id, post_count")
-            .eq("tag", cleanTag)
-            .maybeSingle();
-
-          if (existingTag) {
-            await supabase
-              .from("hashtags")
-              .update({ 
-                post_count: existingTag.post_count + 1, 
-                last_used_at: new Date().toISOString() 
-              })
-              .eq("id", existingTag.id);
-          } else {
-            await supabase
-              .from("hashtags")
-              .insert({ tag: cleanTag, post_count: 1 });
-          }
-        }
-      }
-
       toast.success("โพสต์สำเร็จ!");
       return true;
     } catch (error) {
-      console.error("Error creating post:", error);
+      logger.error("Error creating post:", error);
       toast.error("ไม่สามารถโพสต์ได้");
       return false;
     } finally {
