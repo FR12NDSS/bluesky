@@ -216,7 +216,7 @@ export function usePosts() {
       toast.success("ลบโพสต์แล้ว");
       return true;
     } catch (error) {
-      console.error("Error deleting post:", error);
+      logger.error("Error deleting post:", error);
       toast.error("ไม่สามารถลบโพสต์ได้");
       return false;
     }
@@ -257,7 +257,7 @@ export function usePosts() {
         )
       );
     } catch (error) {
-      console.error("Error toggling like:", error);
+      logger.error("Error toggling like:", error);
     }
   };
 
@@ -296,7 +296,7 @@ export function usePosts() {
         )
       );
     } catch (error) {
-      console.error("Error toggling repost:", error);
+      logger.error("Error toggling repost:", error);
     }
   };
 
@@ -333,7 +333,7 @@ export function usePosts() {
       toast.success("โควตรีโพสต์สำเร็จ!");
       return true;
     } catch (error) {
-      console.error("Error quote reposting:", error);
+      logger.error("Error quote reposting:", error);
       toast.error("ไม่สามารถโควตรีโพสต์ได้");
       return false;
     }
@@ -363,7 +363,7 @@ export function useTrendingHashtags() {
         if (error) throw error;
         setHashtags(data || []);
       } catch (error) {
-        console.error("Error fetching trending:", error);
+        logger.error("Error fetching trending:", error);
       } finally {
         setLoading(false);
       }
